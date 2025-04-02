@@ -35,4 +35,4 @@
 
 
 ## Демонстрация
-![](https://github.com/KonstantinPolyanskiy/test_task_airports/stuff/demo.gif)
+![](https://github.com/KonstantinPolyanskiy/test_task_airports/blob/main/stuff/demo.gif)
