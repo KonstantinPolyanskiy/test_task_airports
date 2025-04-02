@@ -1,25 +1,67 @@
 package main
 
 import (
-  "fmt"
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"test_task_airports/core"
 )
 
-//TIP To run your code, right-click the code and select <b>Run</b>. Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.
-
 func main() {
-  //TIP Press <shortcut actionId="ShowIntentionActions"/> when your caret is at the underlined or highlighted text
-  // to see how GoLand suggests fixing it.
-  s := "gopher"
-  fmt.Println("Hello and welcome, %s!", s)
+	col, err := strconv.Atoi(os.Args[1])
+	if err != nil || col < 1 {
+		fmt.Println("Неверный номер колонки")
+		return
+	}
 
-  for i := 1; i <= 5; i++ {
-	//TIP You can try debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-	// for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>. To start your debugging session, 
-	// right-click your code in the editor and select the <b>Debug</b> option. 
-	fmt.Println("i =", 100/i)
-  }
+	col = col - 1
+
+	parser := core.NewCsvParser()
+	builder := core.NewCsvBuilder("./stuff/airports.csv", parser)
+
+	index, err := builder.Build(col)
+	if err != nil {
+		fmt.Printf("Ошибка построения индекса - %s\n", err)
+		return
+	}
+
+	searcher := core.NewCsvSearcher(index)
+
+	inputReader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Println("Введите текст для поиска")
+
+		input, err := inputReader.ReadString('\n')
+		if err != nil {
+			fmt.Printf("Ошибка чтения ввода - %s\n", err)
+			break
+		}
+
+		input = strings.TrimSpace(input)
+		if input == "!quit" {
+			break
+		}
+
+		results := searcher.Search(input)
+		for _, entry := range results {
+			// Считываем соответствующую строку из файла по смещению
+			lineBytes := make([]byte, entry.Length)
+			_, err := index.File.Seek(entry.Offset, 0)
+			if err != nil {
+				continue
+			}
+			n, err := index.File.Read(lineBytes)
+			if err != nil || n == 0 {
+				continue
+			}
+			lineStr := strings.TrimRight(string(lineBytes), "\r\n")
+			// Выводим найденное значение (без кавычек для строковых полей) и полную строку
+			fmt.Printf("%s[%s]\n", entry.Key, lineStr)
+		}
+	}
+
+	index.File.Close()
 }
-
-//TIP See GoLand help at <a href="https://www.jetbrains.com/help/go/">jetbrains.com/help/go/</a>.
-// Also, you can try interactive lessons for GoLand by selecting 'Help | Learn IDE Features' from the main menu.
